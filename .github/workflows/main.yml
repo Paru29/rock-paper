@@ -1,55 +1,104 @@
-# This is a basic workflow to help you get started with Actions
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+ 
+@Paru29 
+siacodelabs
+/
+setup-antlr4
+Public
+Fork your own copy of siacodelabs/setup-antlr4
+Code
+Issues
+Pull requests
+Discussions
+Actions
+Security
+Insights
+setup-antlr4/action.yaml
+@siakro
+siakro fix: script arguments must be passed to antlr4 (#5)
+Latest commit 2a367a3 on Oct 21, 2022
+ History
+ 1 contributor
+ 61 lines (51 sloc)  1.63 KB
 
-name: GitHub Actions Maven Build Example
+name: Setup Antlr4 on Ubuntu
+description: Set up Antlr4.
+author: Sia Codelabs
 
-on:
-  push:
-    branches: [ master ]
-jobs:
+branding:
+  icon: play-circle
+  color: gray-dark
 
-  build-on-ubuntu:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+inputs:
+  antlr4-version:
+    description: Antlr version to install.
+    required: false
+    default: "4.11.1"
+  
+  setup-java:
+    description: Install JDK.
+    required: false
+    default: "true"
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Step 1 - Checkout main branch from GitHub 
-        uses: actions/checkout@v2
-
-      # Runs a single command using the runners shell
-      - name: Step 2 - Set up JDK 1.8
-        uses: actions/setup-java@v1
-        with:
-          java-version: 1.8
+runs:
+  using: composite
+  steps:
+    - name: Update APT information
+      shell: bash
+      run: sudo apt update
     
-      - name: Step 3 - Have GitHub Actions Build Maven Project
-        run: |
-          mvn -B package --file pom.xml
-          mkdir staging && cp target/*.jar staging
-
-      - name: Step 4 - Set up a cache for Maven
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Step 5 - Persist workflow data as artificats
-        uses: actions/upload-artifact@v2
-        with:
-          name: github-actions-artifact
-          path: staging
-        
-
-
-          
-          
-          
-
-
-
-
-
-
-
+    - name: Set up JDK
+      if: inputs.setup-java
+      uses: actions/setup-java@v3
+      with:
+        java-version: "17"
+        distribution: temurin
+    
+    - name: Install dependencies
+      shell: bash
+      run: |
+        sudo apt install -y curl
+        sudo apt install -y file
+    
+    - name: Download Antlr4
+      shell: bash
+      run: |
+        cd /usr/local/lib
+        sudo curl -O https://www.antlr.org/download/antlr-${{ inputs.antlr4-version }}-complete.jar
+    
+    - name: Check file content type
+      shell: bash
+      run: |
+        fileType=$(file -i /usr/local/lib/antlr-${{ inputs.antlr4-version }}-complete.jar)
+        if [[ ! "$fileType"  =~ "application/java-archive" ]]; then
+          echo "::error::File should be application/java-archive. Got: $fileType."
+          exit 1
+        fi
+    
+    - name: Set up Antlr4
+      shell: bash
+      run: |
+        export CLASSPATH=.:/usr/local/lib/antlr-${{ inputs.antlr4-version }}-complete.jar:$CLASSPATH
+        sudo printf '#!/usr/bin/env bash\n\njava -Xmx500M -cp "/usr/local/lib/antlr-${{ inputs.antlr4-version }}-complete.jar:$CLASSPATH" org.antlr.v4.Tool $*\n' > /usr/local/bin/antlr4
+        sudo chmod ugo+x /usr/local/bin/antlr4
+Footer
+© 2023 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
+setup-antlr4/action.yaml at main · siacodelabs/setup-antlr4
